@@ -5,6 +5,22 @@
 [![ros1](https://github.com/BehaviorTree/BehaviorTree.CPP/workflows/ros1/badge.svg?branch=master)](https://github.com/BehaviorTree/BehaviorTree.CPP/actions?query=workflow%3Aros1)
 [![ros2](https://github.com/BehaviorTree/BehaviorTree.CPP/workflows/ros2/badge.svg?branch=master)](https://github.com/BehaviorTree/BehaviorTree.CPP/actions?query=workflow%3Aros2)
 
+# UFR Syncing Upstream
+Add the upstream repo if it hasn't been added yet (first time only)
+```
+cd ufr2_core/ufr2_behavior_tree/BehaviorTree.CPP
+git remote add upstream git@github.com:BehaviorTree/BehaviorTree.CPP.git
+```
+Sync the latest tags from upstream and push them to UFR fork then update to the desired tag
+```
+git fetch upstream --tags
+git push
+git checkout <version_number>
+> update ufr2_behavior_tree/BehaviorTree.CPP submodule in ufr2_core package
+```
+
+
+
 # BehaviorTree.CPP 4.5
 
 <p align="center"><img width=350 src="animated.svg"></p>
