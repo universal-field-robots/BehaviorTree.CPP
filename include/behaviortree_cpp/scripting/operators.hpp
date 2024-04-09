@@ -130,6 +130,7 @@ struct ExprBinaryArithmetic : ExprBase
     minus,
     times,
     div,
+    concat,
 
     bit_and,
     bit_or,
@@ -151,6 +152,8 @@ struct ExprBinaryArithmetic : ExprBase
         return "*";
       case div:
         return "/";
+      case concat:
+        return "..";
       case bit_and:
         return "&";
       case bit_or:
@@ -253,6 +256,12 @@ struct ExprBinaryArithmetic : ExprBase
       }
     }
     else if (rhs_v.isString() && lhs_v.isString() && op == plus)
+    {
+      return Any(lhs_v.cast<std::string>() + rhs_v.cast<std::string>());
+    }
+    else if (op == concat && ((rhs_v.isString() && lhs_v.isString()) ||
+                            (rhs_v.isString() && lhs_v.isNumber()) ||
+                            (rhs_v.isNumber() && lhs_v.isString())))
     {
       return Any(lhs_v.cast<std::string>() + rhs_v.cast<std::string>());
     }
@@ -694,6 +703,16 @@ struct Expression : lexy::expression_production
     using operand = math_product;
   };
 
+  // x .. y
+  struct string_concat : dsl::infix_op_left
+  {
+    static constexpr auto op = [] {
+      return dsl::op<Ast::ExprBinaryArithmetic::concat>(LEXY_LIT(".."));
+    }();
+    
+    using operand = math_sum;
+  };
+
   // ~x
   struct bit_prefix : dsl::prefix_op
   {
@@ -757,7 +776,7 @@ struct Expression : lexy::expression_production
         dsl::op<Ast::ExprBinaryArithmetic::logic_or>(LEXY_LIT("||")) /
         dsl::op<Ast::ExprBinaryArithmetic::logic_and>(LEXY_LIT("&&"));
 
-    using operand = comparison;
+    using operand = dsl::groups<string_concat, comparison>;
   };
 
   // x ? y : z
