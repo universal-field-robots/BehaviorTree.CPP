@@ -133,7 +133,7 @@ TEST_F(RepeatTestAsync, RepeatTestAsync)
 
   auto res = root.executeTick();
 
-  while (res == NodeStatus::RUNNING)
+  while(res == NodeStatus::RUNNING)
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
     res = root.executeTick();
@@ -148,7 +148,7 @@ TEST_F(RepeatTestAsync, RepeatTestAsync)
   action.resetCounters();
 
   res = root.executeTick();
-  while (res == NodeStatus::RUNNING)
+  while(res == NodeStatus::RUNNING)
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
     res = root.executeTick();
@@ -183,7 +183,7 @@ TEST_F(TimeoutAndRetry, Issue57)
 
   auto t1 = std::chrono::high_resolution_clock::now();
 
-  while (std::chrono::high_resolution_clock::now() < t1 + std::chrono::seconds(2))
+  while(std::chrono::high_resolution_clock::now() < t1 + std::chrono::seconds(2))
   {
     ASSERT_NE(timeout_root.executeTick(), BT::NodeStatus::IDLE);
     std::this_thread::sleep_for(std::chrono::microseconds(50));
@@ -208,15 +208,13 @@ TEST(Decorator, RunOnce)
 
   auto tree = factory.createTreeFromText(xml_text);
 
-  for(int i=0; i<5; i++)
+  for(int i = 0; i < 5; i++)
   {
     NodeStatus status = tree.tickWhileRunning();
     ASSERT_EQ(status, NodeStatus::SUCCESS);
   }
-  // counters[0] contains the number ot times TestA was ticked
+  // counters[0] contains the number of times TestA was ticked
   ASSERT_EQ(counters[0], 1);
-  // counters[1] contains the number ot times TestB was ticked
+  // counters[1] contains the number of times TestB was ticked
   ASSERT_EQ(counters[1], 5);
 }
-
-

@@ -43,14 +43,13 @@ public:
 
   static PortsList providedPorts()
   {
-    return {InputPort<int>(NUM_CYCLES, "Repeat a successful child up to N times. "
-                                       "Use -1 to create an infinite loop.")};
+    return { InputPort<int>(NUM_CYCLES, "Repeat a successful child up to N times. "
+                                        "Use -1 to create an infinite loop.") };
   }
 
 private:
   int num_cycles_;
   int repeat_count_;
-  bool all_skipped_ = true;
 
   bool read_parameter_from_ports_;
   static constexpr const char* NUM_CYCLES = "num_cycles";
@@ -60,4 +59,4 @@ private:
   void halt() override;
 };
 
-}   // namespace BT
+}  // namespace BT

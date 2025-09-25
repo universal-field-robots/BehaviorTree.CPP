@@ -36,24 +36,24 @@ namespace BT
 class SetBlackboardNode : public SyncActionNode
 {
 public:
-  SetBlackboardNode(const std::string& name, const NodeConfig& config) :
-    SyncActionNode(name, config)
+  SetBlackboardNode(const std::string& name, const NodeConfig& config)
+    : SyncActionNode(name, config)
   {
     setRegistrationID("SetBlackboard");
   }
 
   static PortsList providedPorts()
   {
-    return {InputPort("value", "Value to be written int othe output_key"),
-            BidirectionalPort("output_key", "Name of the blackboard entry where the "
-                                            "value should be written")};
+    return { InputPort("value", "Value to be written into the output_key"),
+             BidirectionalPort("output_key", "Name of the blackboard entry where the "
+                                             "value should be written") };
   }
 
 private:
   virtual BT::NodeStatus tick() override
   {
     std::string output_key;
-    if (!getInput("output_key", output_key))
+    if(!getInput("output_key", output_key))
     {
       throw RuntimeError("missing port [output_key]");
     }
@@ -61,11 +61,16 @@ private:
     const std::string value_str = config().input_ports.at("value");
 
     StringView stripped_key;
+    BT::Any out_value;
+
+    std::shared_ptr<Blackboard::Entry> dst_entry =
+        config().blackboard->getEntry(output_key);
+
     if(isBlackboardPointer(value_str, &stripped_key))
     {
       const auto input_key = std::string(stripped_key);
-      std::shared_ptr<Blackboard::Entry> src_entry = config().blackboard->getEntry(input_key);
-      std::shared_ptr<Blackboard::Entry> dst_entry = config().blackboard->getEntry(output_key);
+      std::shared_ptr<Blackboard::Entry> src_entry =
+          config().blackboard->getEntry(input_key);
 
       if(!src_entry)
       {
@@ -76,16 +81,38 @@ private:
         config().blackboard->createEntry(output_key, src_entry->info);
         dst_entry = config().blackboard->getEntry(output_key);
       }
-      dst_entry->value = src_entry->value;
+
+      out_value = src_entry->value;
     }
     else
     {
-      config().blackboard->set(output_key, value_str);
+      out_value = BT::Any(value_str);
     }
+
+    if(out_value.empty())
+      return NodeStatus::FAILURE;
+
+    // avoid type issues when port is remapped: current implementation of the set might be a little bit problematic for initialized on the fly values
+    // this still does not attack math issues
+    if(dst_entry && dst_entry->info.type() != typeid(std::string) && out_value.isString())
+    {
+      try
+      {
+        out_value = dst_entry->info.parseString(out_value.cast<std::string>());
+      }
+      catch(const std::exception& e)
+      {
+        throw LogicError("Can't convert string [", out_value.cast<std::string>(),
+                         "] to type [", BT::demangle(dst_entry->info.type()),
+                         "]: ", e.what());
+      }
+    }
+
+    config().blackboard->set(output_key, out_value);
 
     return NodeStatus::SUCCESS;
   }
 };
-}   // namespace BT
+}  // namespace BT
 
 #endif

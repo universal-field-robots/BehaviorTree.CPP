@@ -1,15 +1,11 @@
-#ifndef BT_MINITRACE_LOGGER_H
-#define BT_MINITRACE_LOGGER_H
+#pragma once
 
-#include <cstring>
 #include "behaviortree_cpp/loggers/abstract_logger.h"
 
 namespace BT
 {
 class MinitraceLogger : public StatusChangeLogger
 {
-  static std::atomic<bool> ref_count;
-
 public:
   MinitraceLogger(const BT::Tree& tree, const char* filename_json);
 
@@ -24,6 +20,4 @@ private:
   TimePoint prev_time_;
 };
 
-}   // namespace BT
-
-#endif   // BT_MINITRACE_LOGGER_H
+}  // namespace BT

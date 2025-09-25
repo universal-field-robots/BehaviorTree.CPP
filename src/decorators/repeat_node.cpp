@@ -16,48 +16,41 @@
 namespace BT
 {
 
-RepeatNode::RepeatNode(const std::string& name, int NTries) :
-  DecoratorNode(name, {}),
-  num_cycles_(NTries),
-  repeat_count_(0),
-  read_parameter_from_ports_(false)
+RepeatNode::RepeatNode(const std::string& name, int NTries)
+  : DecoratorNode(name, {})
+  , num_cycles_(NTries)
+  , repeat_count_(0)
+  , read_parameter_from_ports_(false)
 {
   setRegistrationID("Repeat");
 }
 
-RepeatNode::RepeatNode(const std::string& name, const NodeConfig& config) :
-  DecoratorNode(name, config),
-  num_cycles_(0),
-  repeat_count_(0),
-  read_parameter_from_ports_(true)
+RepeatNode::RepeatNode(const std::string& name, const NodeConfig& config)
+  : DecoratorNode(name, config)
+  , num_cycles_(0)
+  , repeat_count_(0)
+  , read_parameter_from_ports_(true)
 {}
 
 NodeStatus RepeatNode::tick()
 {
-  if (read_parameter_from_ports_)
+  if(read_parameter_from_ports_)
   {
-    if (!getInput(NUM_CYCLES, num_cycles_))
+    if(!getInput(NUM_CYCLES, num_cycles_))
     {
       throw RuntimeError("Missing parameter [", NUM_CYCLES, "] in RepeatNode");
     }
   }
 
   bool do_loop = repeat_count_ < num_cycles_ || num_cycles_ == -1;
-  if(status() == NodeStatus::IDLE)
-  {
-    all_skipped_ = true;
-  }
   setStatus(NodeStatus::RUNNING);
 
-  while (do_loop)
+  while(do_loop)
   {
     NodeStatus const prev_status = child_node_->status();
     NodeStatus child_status = child_node_->executeTick();
 
-    // switch to RUNNING state as soon as you find an active child
-    all_skipped_ &= (child_status == NodeStatus::SKIPPED);
-
-    switch (child_status)
+    switch(child_status)
     {
       case NodeStatus::SUCCESS: {
         repeat_count_++;
@@ -66,8 +59,8 @@ NodeStatus RepeatNode::tick()
         resetChild();
 
         // Return the execution flow if the child is async,
-        // to make this interruptable.
-        if (requiresWakeUp() && prev_status == NodeStatus::IDLE && do_loop)
+        // to make this interruptible.
+        if(requiresWakeUp() && prev_status == NodeStatus::IDLE && do_loop)
         {
           emitWakeUpSignal();
           return NodeStatus::RUNNING;
@@ -99,7 +92,7 @@ NodeStatus RepeatNode::tick()
   }
 
   repeat_count_ = 0;
-  return all_skipped_ ? NodeStatus::SKIPPED : NodeStatus::SUCCESS;
+  return NodeStatus::SUCCESS;
 }
 
 void RepeatNode::halt()
@@ -108,4 +101,4 @@ void RepeatNode::halt()
   DecoratorNode::halt();
 }
 
-}   // namespace BT
+}  // namespace BT

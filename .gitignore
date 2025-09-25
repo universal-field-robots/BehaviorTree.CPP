@@ -11,3 +11,10 @@ CMakeSettings.json
 
 # OSX junk
 .DS_Store
+
+# pixi environments
+.pixi
+
+CMakeUserPresets.json
+
+tags

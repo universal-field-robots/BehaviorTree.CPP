@@ -15,8 +15,8 @@
 
 namespace BT
 {
-SequenceWithMemory::SequenceWithMemory(const std::string& name) :
-  ControlNode::ControlNode(name, {}), current_child_idx_(0)
+SequenceWithMemory::SequenceWithMemory(const std::string& name)
+  : ControlNode::ControlNode(name, {}), current_child_idx_(0)
 {
   setRegistrationID("SequenceWithMemory");
 }
@@ -25,30 +25,27 @@ NodeStatus SequenceWithMemory::tick()
 {
   const size_t children_count = children_nodes_.size();
 
-  if(status() == NodeStatus::IDLE)
+  if(!isStatusActive(status()))
   {
-    all_skipped_ = true;
+    skipped_count_ = 0;
   }
   setStatus(NodeStatus::RUNNING);
 
-  while (current_child_idx_ < children_count)
+  while(current_child_idx_ < children_count)
   {
     TreeNode* current_child_node = children_nodes_[current_child_idx_];
 
     auto prev_status = current_child_node->status();
     const NodeStatus child_status = current_child_node->executeTick();
 
-    // switch to RUNNING state as soon as you find an active child
-    all_skipped_ &= (child_status == NodeStatus::SKIPPED);
-
-    switch (child_status)
+    switch(child_status)
     {
       case NodeStatus::RUNNING: {
         return child_status;
       }
       case NodeStatus::FAILURE: {
         // DO NOT reset current_child_idx_ on failure
-        for (size_t i = current_child_idx_; i < childrenCount(); i++)
+        for(size_t i = current_child_idx_; i < childrenCount(); i++)
         {
           haltChild(i);
         }
@@ -58,9 +55,9 @@ NodeStatus SequenceWithMemory::tick()
       case NodeStatus::SUCCESS: {
         current_child_idx_++;
         // Return the execution flow if the child is async,
-        // to make this interruptable.
-        if (requiresWakeUp() && prev_status == NodeStatus::IDLE &&
-            current_child_idx_ < children_count)
+        // to make this interruptible.
+        if(requiresWakeUp() && prev_status == NodeStatus::IDLE &&
+           current_child_idx_ < children_count)
         {
           emitWakeUpSignal();
           return NodeStatus::RUNNING;
@@ -71,23 +68,26 @@ NodeStatus SequenceWithMemory::tick()
       case NodeStatus::SKIPPED: {
         // It was requested to skip this node
         current_child_idx_++;
+        skipped_count_++;
       }
       break;
 
       case NodeStatus::IDLE: {
         throw LogicError("[", name(), "]: A children should not return IDLE");
       }
-    }   // end switch
-  }     // end while loop
+    }  // end switch
+  }    // end while loop
 
   // The entire while loop completed. This means that all the children returned SUCCESS.
-  if (current_child_idx_ == children_count)
+  const bool all_children_skipped = (skipped_count_ == children_count);
+  if(current_child_idx_ == children_count)
   {
     resetChildren();
     current_child_idx_ = 0;
+    skipped_count_ = 0;
   }
   // Skip if ALL the nodes have been skipped
-  return all_skipped_ ? NodeStatus::SKIPPED : NodeStatus::SUCCESS;
+  return (all_children_skipped) ? NodeStatus::SKIPPED : NodeStatus::SUCCESS;
 }
 
 void SequenceWithMemory::halt()
@@ -97,4 +97,4 @@ void SequenceWithMemory::halt()
   ControlNode::halt();
 }
 
-}   // namespace BT
+}  // namespace BT

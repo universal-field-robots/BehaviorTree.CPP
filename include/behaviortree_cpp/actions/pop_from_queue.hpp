@@ -17,11 +17,10 @@
 #include "behaviortree_cpp/action_node.h"
 #include "behaviortree_cpp/decorator_node.h"
 
-
 /**
  * Template Action used in ex04_waypoints.cpp example.
  *
- * Its purpose is to do make it easy to create while loops wich consume the elements of a queue.
+ * Its purpose is to do make it easy to create while loops which consume the elements of a queue.
  *
  * Note that modifying the queue is not thread safe, therefore the action that creates the queue
  * or push elements into it, must be Synchronous.
@@ -35,8 +34,8 @@ namespace BT
 template <typename T>
 struct ProtectedQueue
 {
-    std::list<T> items;
-    std::mutex mtx;
+  std::list<T> items;
+  std::mutex mtx;
 };
 
 /*
@@ -48,53 +47,55 @@ struct ProtectedQueue
  *
  * We avoid this using reference semantic (wrapping the object in a shared_ptr).
  * Unfortunately, remember that this makes our access to the list not thread-safe!
- * This is the reason why we add a mutex to be used when modyfying the ProtectedQueue::items
+ * This is the reason why we add a mutex to be used when modifying the ProtectedQueue::items
  *
  * */
-
 
 template <typename T>
 class PopFromQueue : public SyncActionNode
 {
-  public:
-    PopFromQueue(const std::string& name, const NodeConfig& config)
-      : SyncActionNode(name, config)
-    {
-    }
+public:
+  PopFromQueue(const std::string& name, const NodeConfig& config)
+    : SyncActionNode(name, config)
+  {}
 
-    NodeStatus tick() override
+  NodeStatus tick() override
+  {
+    std::shared_ptr<ProtectedQueue<T>> queue;
+    if(getInput("queue", queue) && queue)
     {
-        std::shared_ptr<ProtectedQueue<T>> queue;
-        if( getInput("queue", queue) && queue )
-        {
-            std::unique_lock<std::mutex> lk(queue->mtx);
-            auto& items = queue->items;
+      std::unique_lock<std::mutex> lk(queue->mtx);
+      auto& items = queue->items;
 
-            if( items.empty() )
-            {
-                return NodeStatus::FAILURE;
-            }
-            else{
-                T val = items.front();
-                items.pop_front();
-                setOutput("popped_item", val);
-                return NodeStatus::SUCCESS;
-            }
-        }
-        else{
-            return NodeStatus::FAILURE;
-        }
+      if(items.empty())
+      {
+        return NodeStatus::FAILURE;
+      }
+      else
+      {
+        T val = items.front();
+        items.pop_front();
+        setOutput("popped_item", val);
+        return NodeStatus::SUCCESS;
+      }
     }
-
-    static PortsList providedPorts()
+    else
     {
-        return { InputPort<std::shared_ptr<ProtectedQueue<T>>>("queue"),
-                 OutputPort<T>("popped_item")};
+      return NodeStatus::FAILURE;
     }
+  }
+
+  static PortsList providedPorts()
+  {
+    return { InputPort<std::shared_ptr<ProtectedQueue<T>>>("queue"), OutputPort<T>("poppe"
+                                                                                   "d_"
+                                                                                   "ite"
+                                                                                   "m") };
+  }
 };
 
 /**
- * Get the size of a queue. Usefull is you want to write something like:
+ * Get the size of a queue. Useful when you want to write something like:
  *
  *  <QueueSize queue="{waypoints}" size="{wp_size}" />
  *  <Repeat num_cycles="{wp_size}" >
@@ -107,39 +108,37 @@ class PopFromQueue : public SyncActionNode
 template <typename T>
 class QueueSize : public SyncActionNode
 {
-  public:
-    QueueSize(const std::string& name, const NodeConfig& config)
-      : SyncActionNode(name, config)
-    {
-    }
+public:
+  QueueSize(const std::string& name, const NodeConfig& config)
+    : SyncActionNode(name, config)
+  {}
 
-    NodeStatus tick() override
+  NodeStatus tick() override
+  {
+    std::shared_ptr<ProtectedQueue<T>> queue;
+    if(getInput("queue", queue) && queue)
     {
-        std::shared_ptr<ProtectedQueue<T>> queue;
-        if( getInput("queue", queue) && queue )
-        {
-            std::unique_lock<std::mutex> lk(queue->mtx);
-            auto& items = queue->items;
+      std::unique_lock<std::mutex> lk(queue->mtx);
+      auto& items = queue->items;
 
-            if( items.empty() )
-            {
-                return NodeStatus::FAILURE;
-            }
-            else{
-                setOutput("size", int(items.size()) );
-                return NodeStatus::SUCCESS;
-            }
-        }
+      if(items.empty())
+      {
         return NodeStatus::FAILURE;
+      }
+      else
+      {
+        setOutput("size", int(items.size()));
+        return NodeStatus::SUCCESS;
+      }
     }
+    return NodeStatus::FAILURE;
+  }
 
-    static PortsList providedPorts()
-    {
-        return { InputPort<std::shared_ptr<ProtectedQueue<T>>>("queue"),
-                 OutputPort<int>("size")};
-    }
+  static PortsList providedPorts()
+  {
+    return { InputPort<std::shared_ptr<ProtectedQueue<T>>>("queue"),
+             OutputPort<int>("size") };
+  }
 };
 
-
-}
-
+}  // namespace BT

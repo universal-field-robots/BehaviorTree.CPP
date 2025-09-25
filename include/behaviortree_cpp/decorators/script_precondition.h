@@ -21,8 +21,8 @@ namespace BT
 class PreconditionNode : public DecoratorNode
 {
 public:
-  PreconditionNode(const std::string& name, const NodeConfig& config) :
-    DecoratorNode(name, config)
+  PreconditionNode(const std::string& name, const NodeConfig& config)
+    : DecoratorNode(name, config)
   {
     loadExecutor();
   }
@@ -31,10 +31,10 @@ public:
 
   static PortsList providedPorts()
   {
-    return {InputPort<std::string>("if"),
-            InputPort<NodeStatus>("else", NodeStatus::FAILURE,
-                                  "Return status if condition is "
-                                  "false")};
+    return { InputPort<std::string>("if"),
+             InputPort<NodeStatus>("else", NodeStatus::FAILURE,
+                                   "Return status if condition is "
+                                   "false") };
   }
 
 private:
@@ -43,39 +43,43 @@ private:
     loadExecutor();
 
     BT::NodeStatus else_return;
-    if (!getInput("else", else_return))
+    if(!getInput("else", else_return))
     {
       throw RuntimeError("Missing parameter [else] in Precondition");
     }
 
-    Ast::Environment env = {config().blackboard, config().enums};
-    if(_executor(env).cast<bool>())
+    // Only check the 'if' script if we haven't started ticking the children yet.
+    Ast::Environment env = { config().blackboard, config().enums };
+    bool tick_children =
+        _children_running || (_children_running = _executor(env).cast<bool>());
+
+    if(!tick_children)
     {
-      auto const child_status = child_node_->executeTick();
-      if(isStatusCompleted(child_status))
-      {
-        resetChild();
-      }
-      return child_status;
-    }
-    else {
       return else_return;
     }
+
+    auto const child_status = child_node_->executeTick();
+    if(isStatusCompleted(child_status))
+    {
+      resetChild();
+      _children_running = false;
+    }
+    return child_status;
   }
 
   void loadExecutor()
   {
     std::string script;
-    if (!getInput("if", script))
+    if(!getInput("if", script))
     {
       throw RuntimeError("Missing parameter [if] in Precondition");
     }
-    if (script == _script)
+    if(script == _script)
     {
       return;
     }
     auto executor = ParseScript(script);
-    if (!executor)
+    if(!executor)
     {
       throw RuntimeError(executor.error());
     }
@@ -88,6 +92,7 @@ private:
 
   std::string _script;
   ScriptFunction _executor;
+  bool _children_running = false;
 };
 
-}   // namespace BT
+}  // namespace BT

@@ -22,8 +22,14 @@ namespace BT
 
 struct TestNodeConfig
 {
-  /// status to return when the action is completed
+  /// status to return when the action is completed.
   NodeStatus return_status = NodeStatus::SUCCESS;
+
+  /// script to execute when complete_func() returns SUCCESS
+  std::string success_script;
+
+  /// script to execute when complete_func() returns FAILURE
+  std::string failure_script;
 
   /// script to execute when actions is completed
   std::string post_script;
@@ -31,11 +37,9 @@ struct TestNodeConfig
   /// if async_delay > 0, this action become asynchronous and wait this amount of time
   std::chrono::milliseconds async_delay = std::chrono::milliseconds(0);
 
-  /// C++ callback to execute at the beginning
-  std::function<void()> pre_func;
-
-  /// C++ callback to execute at the end
-  std::function<void()> post_func;
+  /// Function invoked when the action is completed.
+  /// If not specified, the node will return [return_status]
+  std::function<NodeStatus(void)> complete_func;
 };
 
 /**
@@ -46,37 +50,35 @@ struct TestNodeConfig
  * 3. Either complete immediately (synchronous action), or after a
  *    given period of time (asynchronous action)
  *
- * This behavior is changed by the parameters pased with TestNodeConfig.
+ * This behavior is changed by the parameters passed with TestNodeConfig.
  *
  * This particular node is created by the factory when TestNodeConfig is
  * added as a substitution rule:
  *
- *    TestNodeConfig test_config;
+ *    auto test_config = std::make_shared<TestNodeConfig>();
  *    // change fields of test_config
  *    factory.addSubstitutionRule(pattern, test_config);
  *
- * See tutorial 11 for more details.
+ * See tutorial 15 for more details.
  */
 class TestNode : public BT::StatefulActionNode
 {
 public:
+  // This constructor is deprecated, because it may cause problems if TestNodeConfig::complete_func is capturing
+  // a reference to the TestNode, i.e. [this]. Use the constructor with std::shared_ptr<TestNodeConfig> instead.
+  // For more details, see https://github.com/BehaviorTree/BehaviorTree.CPP/pull/967
+  [[deprecated("prefer the constructor with std::shared_ptr<TestNodeConfig>")]] TestNode(
+      const std::string& name, const NodeConfig& config, TestNodeConfig test_config);
+
   TestNode(const std::string& name, const NodeConfig& config,
-           TestNodeConfig test_config = {}) :
-    StatefulActionNode(name, config),
-        _test_config(std::move(test_config))
-  {
-    setRegistrationID("TestNode");
-  }
+           std::shared_ptr<TestNodeConfig> test_config);
 
   static PortsList providedPorts()
   {
     return {};
   }
 
-  void setConfig(const TestNodeConfig& config);
-
-private:
-
+protected:
   virtual NodeStatus onStart() override;
 
   virtual NodeStatus onRunning() override;
@@ -85,10 +87,12 @@ private:
 
   NodeStatus onCompleted();
 
-  TestNodeConfig _test_config;
-  ScriptFunction _executor;
+  std::shared_ptr<TestNodeConfig> _config;
+  ScriptFunction _success_executor;
+  ScriptFunction _failure_executor;
+  ScriptFunction _post_executor;
   TimerQueue<> _timer;
-  std::atomic_bool _completed;
+  std::atomic_bool _completed = false;
 };
 
-}   // namespace BT
+}  // namespace BT

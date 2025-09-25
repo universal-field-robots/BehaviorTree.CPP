@@ -17,20 +17,20 @@ namespace BT
 {
 constexpr const char* RetryNode::NUM_ATTEMPTS;
 
-RetryNode::RetryNode(const std::string& name, int NTries) :
-  DecoratorNode(name, {}),
-  max_attempts_(NTries),
-  try_count_(0),
-  read_parameter_from_ports_(false)
+RetryNode::RetryNode(const std::string& name, int NTries)
+  : DecoratorNode(name, {})
+  , max_attempts_(NTries)
+  , try_count_(0)
+  , read_parameter_from_ports_(false)
 {
   setRegistrationID("RetryUntilSuccessful");
 }
 
-RetryNode::RetryNode(const std::string& name, const NodeConfig& config) :
-  DecoratorNode(name, config),
-  max_attempts_(0),
-  try_count_(0),
-  read_parameter_from_ports_(true)
+RetryNode::RetryNode(const std::string& name, const NodeConfig& config)
+  : DecoratorNode(name, config)
+  , max_attempts_(0)
+  , try_count_(0)
+  , read_parameter_from_ports_(true)
 {}
 
 void RetryNode::halt()
@@ -41,31 +41,23 @@ void RetryNode::halt()
 
 NodeStatus RetryNode::tick()
 {
-  if (read_parameter_from_ports_)
+  if(read_parameter_from_ports_)
   {
-    if (!getInput(NUM_ATTEMPTS, max_attempts_))
+    if(!getInput(NUM_ATTEMPTS, max_attempts_))
     {
       throw RuntimeError("Missing parameter [", NUM_ATTEMPTS, "] in RetryNode");
     }
   }
 
   bool do_loop = try_count_ < max_attempts_ || max_attempts_ == -1;
-
-  if(status() == NodeStatus::IDLE)
-  {
-    all_skipped_ = true;
-  }
   setStatus(NodeStatus::RUNNING);
 
-  while (do_loop)
+  while(do_loop)
   {
     NodeStatus prev_status = child_node_->status();
     NodeStatus child_status = child_node_->executeTick();
 
-    // switch to RUNNING state as soon as you find an active child
-    all_skipped_ &= (child_status == NodeStatus::SKIPPED);
-
-    switch (child_status)
+    switch(child_status)
     {
       case NodeStatus::SUCCESS: {
         try_count_ = 0;
@@ -75,13 +67,15 @@ NodeStatus RetryNode::tick()
 
       case NodeStatus::FAILURE: {
         try_count_++;
+        // Refresh max_attempts_ in case it changed in one of the child nodes
+        getInput(NUM_ATTEMPTS, max_attempts_);
         do_loop = try_count_ < max_attempts_ || max_attempts_ == -1;
 
         resetChild();
 
         // Return the execution flow if the child is async,
-        // to make this interruptable.
-        if (requiresWakeUp() && prev_status == NodeStatus::IDLE && do_loop)
+        // to make this interruptible.
+        if(requiresWakeUp() && prev_status == NodeStatus::IDLE && do_loop)
         {
           emitWakeUpSignal();
           return NodeStatus::RUNNING;
@@ -107,7 +101,7 @@ NodeStatus RetryNode::tick()
   }
 
   try_count_ = 0;
-  return all_skipped_ ? NodeStatus::SKIPPED : NodeStatus::FAILURE;
+  return NodeStatus::FAILURE;
 }
 
-}   // namespace BT
+}  // namespace BT

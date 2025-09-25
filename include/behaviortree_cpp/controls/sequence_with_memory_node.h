@@ -42,9 +42,9 @@ public:
 
 private:
   size_t current_child_idx_;
-  bool all_skipped_ = true;
+  size_t skipped_count_ = 0;
 
   virtual BT::NodeStatus tick() override;
 };
 
-}   // namespace BT
+}  // namespace BT
